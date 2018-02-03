@@ -1,53 +1,427 @@
 class Node(object):
-    def __init__(self, value=0):
+    def __init__(self, value=None):
         self.next = None
         self.value = value
 
 
 class List(object):
-    def __init__(self):
-        self.head = None
+    """
+    List() -> new empty list
+    List(iterable) -> new list initialized from iterable's items
+    """
+    def __add__(self, other):
+        """Return self + other."""
+        result = self.copy()
+        result += other
+        return result
 
-    def __str__(self):
+    def __bool__(self):
+        return not self.length
+
+    def __contains__(self, item):
+        """Return item in self."""
         p = self.head
-        values = []
         while p:
-            values.append(p.value)
+            if p.value == item:
+                return True
+        return False
+
+    def __delitem__(self, key):
+        """DO del self[key]."""
+        if type(key) == int:
+            if key < self.length:
+                if key == 0:
+                    self.head = self.head.next
+                else:
+                    p = self.head
+                    node = 1
+                    while p.next:
+                        if key == node:
+                            break
+                        p = p.next
+                        node += 1
+                    p.next = p.next.next
+                self.length -= 1
+            else:
+                raise IndexError('list assignment index out of range')
+        elif type(key) == slice:
+            start = key.start or self.length
+            stop = key.stop or 0
+            step = key.step or 1
+            if step < 0:
+                start = key.start or self.length
+                stop = key.stop or 0
+                start, stop, step = stop, start, -step
+            if stop > self.length:
+                stop = self.length
+            if start < stop:
+                p = Node()
+                p.next = self.head
+                node = 0
+                target = start
+                while p.next:
+                    if node == target and target < stop:
+                        p.next = p.next.next
+                        target += step
+                        self.length -= 1
+                    else:
+                        p = p.next
+                    node += 1
+        else:
+            raise TypeError('list indices must be integers or slices, not %s' % key)
+
+    def __eq__(self, other):
+        """Return self==other."""
+        if type(self) == type(other) and len(self) == len(other):
+            sp = self.head
+            op = other.head
+            while True:
+                if not sp and not op:
+                    # sp and op are both None.
+                    break
+                elif sp and op:
+                    if sp.value != op.value:
+                        return False
+                sp = sp.next
+                op = op.next
+            return True
+        else:
+            return False
+
+    def __ge__(self, other):
+        """Return self>=other."""
+        if type(other) == List:
+            sp = self.head
+            op = other.head
+            while True:
+                if sp and op:
+                    if sp.value > op.value:
+                        return True
+                    elif sp.value < op.value:
+                        return False
+                elif not sp:
+                    return False
+                else:
+                    return True
+                sp = sp.next
+                op = op.next
+        else:
+            raise TypeError("'>=' not supported between instances of 'List' and '%s'" % type(other))
+
+    def __getattr__(self, item):
+        """Return getattr(self, item)."""
+        return getattr(super(), item)
+
+    def __getitem__(self, index):
+        """Return self[index]"""
+        if type(index) == int:
+            if not self and index < self.length:
+                p = self.head
+                node = 0
+                while node < index:
+                    p = p.next
+                    node += 1
+                return p.value
+            else:
+                raise IndexError('list index out of range')
+        elif type(index) == slice:
+            step = index.step or 1
+            start = index.start
+            if start is None:
+                start = [0, self.length-1][step < 0]
+            stop = index.stop
+            if stop is None:
+                stop = [self.length, -1][step < 0]
+            reverse = 0
+            if step < 0:
+                reverse = 1
+                start, stop, step = stop+1, start+1, -step
+            if stop > self.length:
+                stop = self.length
+            if start < stop:
+                result = List()
+                result.head = Node()
+                rp = result.head
+                p = self.head
+                node = 0
+                target = start
+                while p:
+                    if node == target and target < stop:
+                        rp.next = Node(p.value)
+                        rp = rp.next
+                        target += step
+                    p = p.next
+                    node += 1
+                result.head = result.head.next
+                if reverse:
+                    result.reverse()
+                return result
+            else:
+                return List()
+        else:
+            raise TypeError('list indices must be integers or slices, not %s' % index)
+
+    def __gt__(self, other):
+        """Return self>other."""
+        if type(other) == List:
+            sp = self.head
+            op = other.head
+            while True:
+                if sp and op:
+                    if sp.value > op.value:
+                        return True
+                    elif sp.value < op.value:
+                        return False
+                elif not op:
+                    return True
+                else:
+                    return False
+                sp = sp.next
+                op = op.next
+        else:
+            raise TypeError("'>=' not supported between instances of 'List' and '%s'" % type(other))
+
+    def __iadd__(self, other):
+        """Implement self+=other."""
+        if type(other) == List:
+            p = self.head
+            while p.next:
+                p = p.next
+            for value in other:
+                p.next = Node(value)
+                p = p.next
+                self.length += 1
+        else:
+            raise TypeError('can only concatenate list (not "%s") to list' % type(other))
+        return self
+
+    def __imul__(self, other):
+        """Implement self*=other."""
+        if type(other) == int:
+            p = Node()
+            p.next = self.head
+            while p.next:
+                p = p.next
+            self_ = self.copy()
+            for i in range(other-1):
+                sp = self_.head
+                while sp:
+                    p.next = Node(sp.value)
+                    p = p.next
+                    sp = sp.next
+            self.length *= other
+            return self
+        else:
+            raise TypeError("can't multiply sequence by non-int of type '%s'" % type(other))
+
+    def __init__(self, *values):
+        self.head = None
+        self.length = 0
+        if len(values) == 1:
+            values = values[0]
+            if hasattr(values, '__iter__'):
+                self.head = Node()
+                p = self.head
+                for value in values:
+                    p.next = Node(value)
+                    p = p.next
+                    self.length += 1
+                self.head = self.head.next
+            else:
+                raise TypeError("'%s' object is not iterable" % type(values))
+
+    def __iter__(self):
+        """Implement iter(self)."""
+        p = self.head
+        while p:
+            yield p.value
             p = p.next
-        return str(values)
 
-    __repr__ = __str__
+    def __le__(self, other):
+        """Return self<=other."""
+        if type(other) == List:
+            return other >= self
+        else:
+            raise TypeError("'<=' not supported between instances of 'List' and '%s'" % type(other))
 
-    def is_empty(self):
-        return bool(not self.head)
+    def __len__(self):
+        """Return len(self)."""
+        return self.length
+
+    def __lt__(self, other):
+        """Return self<other."""
+        if type(other) == List:
+            return other > self
+        else:
+            raise TypeError("'<' not supported between instances of 'List' and '%s'" % type(other))
+
+    def __mul__(self, other):
+        """Return self*other."""
+        if type(other) == int:
+            self_ = self.copy()
+            p = Node()
+            p.next = self_.head
+            while p.next:
+                p = p.next
+            for i in range(other-1):
+                sp = self.head
+                while sp:
+                    p.next = Node(sp.value)
+                    p = p.next
+                    sp = sp.next
+            self_.length *= other
+            return self_
+        else:
+            raise TypeError("can't multiply sequence by non-int of type '%s'" % type(other))
+
+    def __ne__(self, other):
+        """Return self != other."""
+        return not self == other
+
+    def __repr__(self):
+        """Return repr(self)."""
+        p = self.head
+        values = ''
+        while p:
+            values += str(p.value) + ', '
+            p = p.next
+        return '{' + values[:-2] + '}'
+
+    def __reversed__(self):
+        """L.__reversed__() -- return a reverse iterator over the list"""
+        sp = self.head
+        p = Node(sp.value)
+        sp = sp.next
+        while sp:
+            tmp = Node(sp.value)
+            tmp.next = p
+            p = tmp
+            sp = sp.next
+        result = List()
+        result.head = p
+        return iter(result)
+
+    __rmul__ = __mul__
+
+    # bug
+    # def __setitem__(self, key, value):
+    #     """Set self[key] to value."""
+    #     if type(key) == int:
+    #         if not self and key < self.length:
+    #             p = self.head
+    #             node = 0
+    #             while node < key:
+    #                 p = p.next
+    #                 node += 1
+    #             p.value = value
+    #         else:
+    #             raise IndexError('list assignment index out of range')
+    #     elif type(key) == slice:
+    #         step = key.step or 1
+    #         start = key.start
+    #         if start is None:
+    #             start = [0, self.length-1][step < 0]
+    #         stop = key.stop
+    #         if stop is None:
+    #             stop = [self.length, -1][step < 0]
+    #         if hasattr(value, '__iter__'):
+    #             if step != 1:
+    #                 if step < 0:
+    #                     start, stop, step = stop + 1, start + 1, -step
+    #                 import math
+    #                 if len(value) == math.ceil((stop - start)/step):
+    #                     value = list(reversed(value))
+    #                     node = 0
+    #                     p = self.head
+    #                     target = start
+    #                     while target < stop:
+    #                         while node < target:
+    #                             node += 1
+    #                             p = p.next
+    #                         p.value = value.pop(0)
+    #                         target += step
+    #                 else:
+    #                     raise ValueError('attempt to assign sequence of size %d to extended slice of size %d'
+    #                                      % (len(value), math.ceil((stop - start)/step)))
+    #             else:
+    #                 pass
+    #
+    #         else:
+    #             if step != 1:
+    #                 raise TypeError("must assign iterable to extended slice")
+    #             else:
+    #                 raise TypeError("can only assign an iterable")
+    #     else:
+    #         raise TypeError('list indices must be integers or slices, not %s' % type(key))
 
     def append(self, value):
+        """L.append(value) -> None -- append value to end"""
         p = self.head
-        if self.is_empty():
+        if self:
             self.head = Node(value)
         else:
             while p.next:
                 p = p.next
             p.next = Node(value)
+        self.length += 1
         return self
 
-    def add(self, values):
-        for i in values:
-            self.append(i)
-        return self
-    
-    def get(self, index):
-        if not self.is_empty():
-            p = self.head
-            node = 0
-            while p.next and (node < index):
-                p = p.next
-                node += 1
-            if node == index:
-                return p.value
-        raise IndexError('Index out of bound')
-    
-    def destroy(self):
+    def clear(self):
+        """L.clear() -> None -- remove all items from L"""
         self.head = None
 
-L = List()
+    def copy(self):
+        """L.copy() -> list -- a shallow copy of L"""
+        return List(self)
+
+    def count(self):
+        """L.count(value) -> integer -- return number of occurrences of value"""
+        pass
+
+    def extend(self):
+        """L.extend(iterable) -> None -- extend list by appending elements from the iterable"""
+        pass
+
+    def index(self):
+        """L.index(value, [start, [stop]]) -> integer -- return first index of value.
+        Raises ValueError if the value is not present."""
+        pass
+
+    def insert(self):
+        """L.insert(index, object) -- insert object before index"""
+        pass
+
+    def pop(self):
+        """L.pop([index]) -> item -- remove and return item at index (default last).
+        Raises IndexError if list is empty or index is out of range."""
+        pass
+
+    def remove(self):
+        """L.remove(value) -> None -- remove first occurrence of value.
+        Raises ValueError if the value is not present."""
+        pass
+
+    def reverse(self):
+        """L.reverse() -- reverse *IN PLACE*"""
+        pre = self.head
+        p = pre.next
+        suf = p.next
+
+        self.head.next = None
+        self.head = None
+        while suf:
+            p.next = pre
+            pre = p
+            p = suf
+            suf = p.next
+        p.next = pre
+        self.head = p
+
+    def sort(self):
+        """L.sort(key=None, reverse=False) -> None -- stable sort *IN PLACE*"""
+        pass
+
+L = List(range(10))
+#L.reverse()
+L[6:0:-2] = [7, 7, 7]
+print(L)
