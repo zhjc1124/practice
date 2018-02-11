@@ -45,28 +45,42 @@ class List(object):
             else:
                 raise IndexError('list assignment index out of range')
         elif type(key) == slice:
-            start = key.start or self.length
-            stop = key.stop or 0
             step = key.step or 1
-            if step < 0:
-                start = key.start or self.length
-                stop = key.stop or 0
-                start, stop, step = stop, start, -step
-            if stop > self.length:
+            index = (step > 0) - 1
+            start = key.start
+            if start is None:
+                start = [0, self.length-1][step < 0]
+            elif start <= -self.length:
+                start = index
+            elif start < 0:
+                start += self.length
+            elif start >= self.length:
+                start = self.length + index
+            stop = key.stop
+            if stop is None:
+                stop = [self.length, -1][step < 0]
+            elif stop <= -self.length:
+                stop = 0
+            elif stop < 0:
+                stop += self.length
+            elif stop >= self.length:
                 stop = self.length
-            if start < stop:
-                p = Node()
-                p.next = self.head
-                node = 0
-                target = start
-                while p.next:
-                    if node == target and target < stop:
-                        p.next = p.next.next
-                        target += step
-                        self.length -= 1
-                    else:
-                        p = p.next
-                    node += 1
+            targets = list(range(start, stop, step))
+            base = Node()
+            p = base
+            p.next = self.head
+            node = 0
+            # if step < 0 , pop the value of targets from the last
+            self.length -= len(targets)
+            while targets:
+                if node == targets[index]:
+                    p.next = p.next.next
+                    targets.pop(index)
+                else:
+                    p = p.next
+                node += 1
+            self.head = base.next
+
         else:
             raise TypeError('list indices must be integers or slices, not %s' % key)
 
@@ -82,6 +96,8 @@ class List(object):
                 elif sp and op:
                     if sp.value != op.value:
                         return False
+                else:
+                    return False
                 sp = sp.next
                 op = op.next
             return True
@@ -112,52 +128,53 @@ class List(object):
         """Return getattr(self, item)."""
         return getattr(super(), item)
 
-    def __getitem__(self, index):
-        """Return self[index]"""
-        if type(index) == int:
-            if not self and index < self.length:
+    def __getitem__(self, key):
+        """Return self[key]"""
+        if type(key) == int:
+            if not self and key < self.length:
                 p = self.head
                 node = 0
-                while node < index:
+                while node < key:
                     p = p.next
                     node += 1
                 return p.value
             else:
                 raise IndexError('list index out of range')
-        elif type(index) == slice:
-            step = index.step or 1
-            start = index.start
+        elif type(key) == slice:
+            step = key.step or 1
+            start = key.start
             if start is None:
                 start = [0, self.length-1][step < 0]
-            stop = index.stop
+            elif start <= -self.length:
+                start = 0
+            elif start < 0:
+                start += self.length
+            stop = key.stop
             if stop is None:
                 stop = [self.length, -1][step < 0]
-            reverse = 0
+            elif stop <= -self.length:
+                stop = 0
+            elif stop < 0:
+                stop += self.length
+            targets = [i for i in range(start, stop, step) if i in range(self.length)]
+            result = List()
+            result.head = Node()
+            rp = result.head
+            p = self.head
+            node = 0
+            # if step < 0 , pop the value of targets from the last
+            index = (step > 0)-1
+            while targets:
+                if node == targets[index]:
+                    rp.next = Node(p.value)
+                    rp = rp.next
+                    targets.pop(index)
+                p = p.next
+                node += 1
+            result.head = result.head.next
             if step < 0:
-                reverse = 1
-                start, stop, step = stop+1, start+1, -step
-            if stop > self.length:
-                stop = self.length
-            if start < stop:
-                result = List()
-                result.head = Node()
-                rp = result.head
-                p = self.head
-                node = 0
-                target = start
-                while p:
-                    if node == target and target < stop:
-                        rp.next = Node(p.value)
-                        rp = rp.next
-                        target += step
-                    p = p.next
-                    node += 1
-                result.head = result.head.next
-                if reverse:
-                    result.reverse()
-                return result
-            else:
-                return List()
+                result.reverse()
+            return result
         else:
             raise TypeError('list indices must be integers or slices, not %s' % index)
 
@@ -303,56 +320,52 @@ class List(object):
 
     __rmul__ = __mul__
 
-    # bug
-    # def __setitem__(self, key, value):
-    #     """Set self[key] to value."""
-    #     if type(key) == int:
-    #         if not self and key < self.length:
-    #             p = self.head
-    #             node = 0
-    #             while node < key:
-    #                 p = p.next
-    #                 node += 1
-    #             p.value = value
-    #         else:
-    #             raise IndexError('list assignment index out of range')
-    #     elif type(key) == slice:
-    #         step = key.step or 1
-    #         start = key.start
-    #         if start is None:
-    #             start = [0, self.length-1][step < 0]
-    #         stop = key.stop
-    #         if stop is None:
-    #             stop = [self.length, -1][step < 0]
-    #         if hasattr(value, '__iter__'):
-    #             if step != 1:
-    #                 if step < 0:
-    #                     start, stop, step = stop + 1, start + 1, -step
-    #                 import math
-    #                 if len(value) == math.ceil((stop - start)/step):
-    #                     value = list(reversed(value))
-    #                     node = 0
-    #                     p = self.head
-    #                     target = start
-    #                     while target < stop:
-    #                         while node < target:
-    #                             node += 1
-    #                             p = p.next
-    #                         p.value = value.pop(0)
-    #                         target += step
-    #                 else:
-    #                     raise ValueError('attempt to assign sequence of size %d to extended slice of size %d'
-    #                                      % (len(value), math.ceil((stop - start)/step)))
-    #             else:
-    #                 pass
-    #
-    #         else:
-    #             if step != 1:
-    #                 raise TypeError("must assign iterable to extended slice")
-    #             else:
-    #                 raise TypeError("can only assign an iterable")
-    #     else:
-    #         raise TypeError('list indices must be integers or slices, not %s' % type(key))
+    def __setitem__(self, key, value):
+        """Set self[key] to value."""
+        if type(key) == int:
+            if not self and key < self.length:
+                p = self.head
+                node = 0
+                while node < key:
+                    p = p.next
+                    node += 1
+                p.value = value
+            else:
+                raise IndexError('list assignment index out of range')
+        elif type(key) == slice:
+            step = key.step or 1
+            start = key.start
+            if start is None:
+                start = [0, self.length-1][step < 0]
+            stop = key.stop
+            if stop is None:
+                stop = [self.length, -1][step < 0]
+            targets = [i for i in range(start, stop, step) if i in range(self.length)]
+            if hasattr(value, '__iter__'):
+                index = (step > 0) - 1
+                if step != 1:
+                    if len(value) == len(targets):
+                        p = self.head
+                        node = 0
+                        while targets:
+                            if node == targets[index]:
+                                p.value = value[index]
+                                value.pop(index)
+                                targets.pop(index)
+                            p = p.next
+                            node += 1
+                    else:
+                        raise ValueError('attempt to assign sequence of size %d to extended slice of size %d'
+                                         % (len(value), len(targets)))
+                else:
+                    pass
+            else:
+                if step != 1:
+                    raise TypeError("must assign iterable to extended slice")
+                else:
+                    raise TypeError("can only assign an iterable")
+        else:
+            raise TypeError('list indices must be integers or slices, not %s' % type(key))
 
     def append(self, value):
         """L.append(value) -> None -- append value to end"""
@@ -421,7 +434,26 @@ class List(object):
         """L.sort(key=None, reverse=False) -> None -- stable sort *IN PLACE*"""
         pass
 
+
+# a,b,c=-17,-25,-4
+a,b,c=-24,None,-17
 L = List(range(10))
-#L.reverse()
-L[6:0:-2] = [7, 7, 7]
-print(L)
+ll = list(range(10))
+del L[a:b:c]
+del ll[a:b:c]
+print(L==List(ll))
+l = list(range(-30, 30))
+l.append(None)
+import random
+for i in range(10000):
+    a = random.choice(l)
+    b = random.choice(l)
+    c = random.choice(l)
+    if c == 0:
+        c = None
+    T1 = List(range(10))
+    T2 = list(range(10))
+    del T1[a:b:c]
+    del T2[a:b:c]
+    if T1 != List(T2):
+        print(a, b, c, T1, T2)
