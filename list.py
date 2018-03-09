@@ -387,13 +387,27 @@ class List(object):
         """L.copy() -> list -- a shallow copy of L"""
         return List(self)
 
-    def count(self):
+    def count(self, value):
         """L.count(value) -> integer -- return number of occurrences of value"""
-        pass
+        p = self.head
+        count = 0
+        while p:
+            if p.value == value:
+                count += 1
+            p = p.next
+        return count
 
-    def extend(self):
+    def extend(self, other):
         """L.extend(iterable) -> None -- extend list by appending elements from the iterable"""
-        pass
+        if not self:
+            self.head = List(other).head
+        else:
+            p = self.head
+            while p.next:
+                p = p.next
+            for i in other:
+                p.next = Node(i)
+                p = p.next
 
     def index(self):
         """L.index(value, [start, [stop]]) -> integer -- return first index of value.
