@@ -42,6 +42,8 @@ class NBayes(object):
             for word in self.data[index]:
                 self.tf[index, self.vocabulary.index(word)] += 1
         self.idf = np.sum(self.tf, axis=0)
+        # 以TF-IDF方式生成向量空间， 注释掉为普通词频
+        self.tf = np.log2(self.doclength/self.idf) * self.idf
 
     def build_tdm(self):
         for i in range(len(self.labels)):
